@@ -116,27 +116,6 @@ module.exports = class Keystone {
     };
   }
 
-  _executeOperation({
-    requestString,
-    rootValue = null,
-    contextValue,
-    variableValues,
-    operationName,
-  }) {
-    // This method is a thin wrapper around the graphql() function which uses
-    // contextValue.schemaName to select a schema created by app-graphql to execute.
-    // https://graphql.org/graphql-js/graphql/#graphql
-    const schema = this._schemas[contextValue.schemaName];
-    if (!schema) {
-      return Promise.reject(
-        new Error(
-          `No executable schema named '${contextValue.schemaName}' is available. Have you setup '@keystonejs/app-graphql'?`
-        )
-      );
-    }
-    return graphql(schema, requestString, rootValue, contextValue, variableValues, operationName);
-  }
-
   _getAccessControlContext({ schemaName, authentication, skipAccessControl }) {
     if (skipAccessControl) {
       return {
@@ -274,52 +253,6 @@ module.exports = class Keystone {
         skipAccessControl,
       }),
       ...this._sessionManager.getContext(req),
-    };
-  }
-
-  /**
-   * A factory for generating executable graphql query functions.
-   *
-   * @param context Object The graphQL Context object
-   * @param context.schemaName String Usually 'admin', this is the registered
-   * schema as passed to keystone.registerSchema()
-   *
-   * @return Function An executable function for running a query
-   */
-  _buildQueryHelper(defaultContext) {
-    /**
-     * An executable function for running a query
-     *
-     * @param requestString String A graphQL query string
-     * @param options.skipAccessControl Boolean By default access control _of
-     * the user making the initial request_ is still tested. Disable all
-     * Access Control checks with this flag
-     * @param options.variables Object The variables passed to the graphql
-     * query for the given queryString.
-     * @param options.context Object Overrides to the default context used when
-     * making a query. Useful for setting the `schemaName` for example.
-     *
-     * @return Promise<Object> The graphql query response
-     */
-    return (
-      requestString,
-      { skipAccessControl = false, variables, context = {}, operationName } = {}
-    ) => {
-      let contextValue = { ...defaultContext, ...context };
-
-      if (skipAccessControl) {
-        contextValue.getCustomAccessControlForUser = () => true;
-        contextValue.getListAccessControlForUser = () => true;
-        contextValue.getFieldAccessControlForUser = () => true;
-        contextValue.getAuthAccessControlForUser = () => true;
-      }
-
-      return this._executeOperation({
-        contextValue,
-        requestString,
-        variableValues: variables,
-        operationName,
-      });
     };
   }
 
